@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-deployment-status
+  labels:
+    app: k8s-deployment-status
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-deployment-status
+  template:
+    metadata:
+      labels:
+        app: k8s-deployment-status
+    spec:
+      serviceAccountName: deployment-status-sa
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: k8s-deployment-status
+        image: ghcr.io/siddjoshi/kube-gh-extension:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10 
