@@ -2,10 +2,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: k8s-deployment-status
+  labels:
+    app: k8s-deployment-status
 spec:
+  type: LoadBalancer
   selector:
     app: k8s-deployment-status
   ports:
   - port: 80
     targetPort: 5000
-  type: ClusterIP 
+    protocol: TCP
+    name: http

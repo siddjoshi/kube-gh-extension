@@ -15,14 +15,18 @@ spec:
         app: k8s-deployment-status
     spec:
       serviceAccountName: deployment-status-sa
-      imagePullSecrets:
-      - name: ghcr-secret
       containers:
       - name: k8s-deployment-status
-        image: ghcr.io/siddjoshi/kube-gh-extension:latest
+        image: siddjoshi/kube-gh-extension:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 5000
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-secret
+              key: api-key
         resources:
           requests:
             cpu: "100m"
