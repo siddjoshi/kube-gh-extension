@@ -1,6 +1,6 @@
 # app.py
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 import os
@@ -8,11 +8,19 @@ import openai
 import asyncio
 from functools import lru_cache
 import time
+from openai import OpenAI
 
 app = Flask(__name__)
 
 # Initialize OpenAI
-openai.api_key = os.getenv('OPENAI_API_KEY')
+token = os.environ["GITHUB_TOKEN"]
+endpoint = "https://models.inference.ai.azure.com"
+model_name = "gpt-4o-mini"
+
+openai_client = OpenAI(
+    base_url=endpoint,
+    api_key=token,
+)
 
 def init_kubernetes():
     try:
@@ -27,16 +35,29 @@ k8s_client = init_kubernetes()
 def get_deployments():
     return k8s_client.list_deployment_for_all_namespaces(watch=False)
 
-@app.route('/deployment-status', methods=['GET'])
+@app.route('/deployment-status', methods=['GET', 'POST'])
 def get_deployment_status():
     try:
-        deployments = get_deployments()
-        
-        total_deployments = len(deployments.items)
+        # Handle GET request
+        if request.method == 'GET':
+            deployments = get_deployments()
+            namespace = None
+        # Handle POST request
+        elif request.method == 'POST':
+            data = request.get_json()
+            namespace = data.get("namespace") if data else None
+            deployments = get_deployments()
+
+        total_deployments = 0
         healthy_count = 0
         degraded_deployments = []
 
         for deployment in deployments.items:
+            # Filter by namespace if provided
+            if namespace and deployment.metadata.namespace != namespace:
+                continue
+            
+            total_deployments += 1
             available_replicas = deployment.status.available_replicas or 0
             desired_replicas = deployment.status.replicas or 0
             
@@ -105,14 +126,14 @@ async def get_insights():
         Format the response in a clear, structured way.
         """
 
-        # Use asyncio to call OpenAI API asynchronously
-        response = await asyncio.to_thread(openai.ChatCompletion.create,
-            model="gpt-4",
+        response = await asyncio.get_event_loop().run_in_executor(None, openai_client.chat.completions.create,
+            model=model_name,
             messages=[
                 {"role": "system", "content": "You are a Kubernetes expert providing analysis and actionable insights."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
+            top_p=1.0,
             max_tokens=1000
         )
 

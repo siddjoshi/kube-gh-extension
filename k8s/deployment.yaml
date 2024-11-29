@@ -27,6 +27,11 @@ spec:
             secretKeyRef:
               name: openai-secret
               key: api-key
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-secret
+              key: token
         resources:
           requests:
             cpu: "100m"
